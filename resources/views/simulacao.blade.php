@@ -232,8 +232,38 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const btnConfirmar = document.getElementById('btn-confirmar');
+            const txtConfirmar = document.getElementById('txt-confirmar');
+            const spinnerConfirmar = document.getElementById('spinner-confirmar');
+            const modalSucesso = document.getElementById('modal-sucesso');
 
-            // TODO: Implementar o clique do botão de confirmação.
+            btnConfirmar.addEventListener('click', async () => {
+                spinnerConfirmar.classList.remove('hidden');
+                btnConfirmar.disabled = true;
+                txtConfirmar.textContent = 'Confirmando...';
+
+                try {
+                    const response = await fetch('/api/analise-credito/{{ $analise->id }}/contratar', {
+                        method: 'POST',
+                        headers: {
+                            Accept: 'application/json',
+                        },
+                    });
+
+                    if (response.ok) {
+                        modalSucesso.classList.remove('hidden');
+                        return;
+                    }
+
+                    const data = await response.json().catch(() => ({}));
+                    alert(data.message || 'Não foi possível confirmar a contratação. Tente novamente.');
+                } catch (erro) {
+                    alert('Falha de conexão com o servidor. Tente novamente em instantes.');
+                } finally {
+                    spinnerConfirmar.classList.add('hidden');
+                    btnConfirmar.disabled = false;
+                    txtConfirmar.textContent = 'Confirmar Contratação';
+                }
+            });
         });
     </script>
 

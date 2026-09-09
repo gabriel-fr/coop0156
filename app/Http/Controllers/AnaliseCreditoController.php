@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\StatusAnalise;
 use App\Http\Requests\SolicitarAnaliseCreditoRequest;
+use App\Models\AnaliseCredito;
 use App\Services\AnaliseCreditoService;
 
 class AnaliseCreditoController extends Controller
@@ -50,7 +52,16 @@ class AnaliseCreditoController extends Controller
      */
     public function contratar($id)
     {
-        // TODO: Implementar validação da análise e confirmação da contratação.
-        return response()->json(['message' => 'Not implemented'], 501);
+        $analise = AnaliseCredito::findOrFail($id);
+
+        if ($analise->status !== StatusAnalise::APROVADO) {
+            return response()->json([
+                'message' => 'Apenas análises aprovadas podem ser contratadas.',
+            ], 422);
+        }
+
+        $analise->update(['status' => StatusAnalise::CONTRATADO]);
+
+        return response()->json($analise);
     }
 }

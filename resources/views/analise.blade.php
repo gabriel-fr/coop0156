@@ -97,7 +97,7 @@
                     <!-- CPF -->
                     <div>
                         <label for="cpf" class="block text-sm font-medium text-slate-400 mb-2">CPF</label>
-                        <input type="text" id="cpf" name="cpf" required placeholder="000.000.000-00"
+                        <input type="text" id="cpf" name="cpf" required placeholder="000.000.000-00" maxlength="14" inputmode="numeric" autocomplete="off"
                             class="w-full bg-slate-950/50 border border-panelBorder rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all">
                     </div>
 
@@ -264,12 +264,172 @@
       --      o usuário para '/simulacao/{id}' para visualizar as condições antes de contratar.
       -->
     <script>
+        function aplicarMascaraCpf(valor) {
+            return valor
+                .replace(/\D/g, '')
+                .slice(0, 11)
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        }
+
+        function validarCpf(cpf) {
+            cpf = String(cpf).replace(/\D/g, '');
+
+            if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) {
+                return false;
+            }
+
+            const calcularDigito = (base, fatorInicial) => {
+                let soma = 0;
+                for (let i = 0; i < base.length; i++) {
+                    soma += parseInt(base.charAt(i), 10) * (fatorInicial - i);
+                }
+                const resto = (soma * 10) % 11;
+                return resto === 10 ? 0 : resto;
+            };
+
+            const digito1 = calcularDigito(cpf.substring(0, 9), 10);
+            const digito2 = calcularDigito(cpf.substring(0, 10), 11);
+
+            return digito1 === parseInt(cpf.charAt(9), 10) && digito2 === parseInt(cpf.charAt(10), 10);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
-            // O candidato deve preencher a integração aqui.
-
             const form = document.getElementById('form-analise');
+            const btnSolicitar = document.getElementById('btn-solicitar');
+            const cpfInput = document.getElementById('cpf');
+            const txtSolicitar = document.getElementById('txt-solicitar');
+            const loadingSpinner = document.getElementById('loading-spinner');
 
-            // TODO: Adicionar Event Listeners e requisições para a API Laravel.
+            const resultadoVazio = document.getElementById('resultado-vazio');
+            const resultadoAnalise = document.getElementById('resultado-analise');
+
+            const resNome = document.getElementById('res-nome');
+            const resCpf = document.getElementById('res-cpf');
+            const resScore = document.getElementById('res-score');
+            const resStatus = document.getElementById('res-status');
+
+            const dadosAprovado = document.getElementById('dados-aprovado');
+            const resTaxa = document.getElementById('res-taxa');
+            const resParcela = document.getElementById('res-parcela');
+            const resComprometimento = document.getElementById('res-comprometimento');
+
+            const dadosReprovado = document.getElementById('dados-reprovado');
+            const resMotivo = document.getElementById('res-motivo');
+
+            const containerContratacao = document.getElementById('container-contratacao');
+            const btnContratar = document.getElementById('btn-contratar');
+
+            cpfInput.addEventListener('input', (event) => {
+                event.target.value = aplicarMascaraCpf(event.target.value);
+            });
+
+            const formatarMoeda = (valor) => `R$ ${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            const exibirResultado = (analise) => {
+                resultadoVazio.classList.add('hidden');
+                resultadoAnalise.classList.remove('hidden');
+
+                resNome.textContent = analise.nome ?? '-';
+                resCpf.textContent = analise.cpf ?? '-';
+                resScore.textContent = analise.score ?? '-';
+                resStatus.textContent = analise.status ?? '-';
+
+                dadosAprovado.classList.add('hidden');
+                dadosReprovado.classList.add('hidden');
+                containerContratacao.classList.add('hidden');
+
+                if (analise.status === 'aprovado') {
+                    dadosAprovado.classList.remove('hidden');
+
+                    resTaxa.textContent = `${Number(analise.taxa_juros).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}% a.m.`;
+                    resParcela.textContent = formatarMoeda(analise.valor_parcela);
+
+                    const rendaMensal = Number(analise.renda_mensal);
+                    const comprometimento = rendaMensal > 0
+                        ? (Number(analise.valor_parcela) / rendaMensal) * 100
+                        : 0;
+                    resComprometimento.textContent = `${comprometimento.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+
+                    containerContratacao.classList.remove('hidden');
+                    btnContratar.onclick = () => {
+                        window.location.href = `/simulacao/${analise.id}`;
+                    };
+                } else {
+                    dadosReprovado.classList.remove('hidden');
+                    resMotivo.textContent = analise.motivo_rejeicao ?? 'Não foi possível aprovar esta solicitação.';
+                }
+            };
+
+            const exibirErro = (mensagem) => {
+                resultadoVazio.classList.add('hidden');
+                resultadoAnalise.classList.remove('hidden');
+
+                resNome.textContent = '-';
+                resCpf.textContent = '-';
+                resScore.textContent = '-';
+                resStatus.textContent = 'Erro';
+
+                dadosAprovado.classList.add('hidden');
+                containerContratacao.classList.add('hidden');
+                dadosReprovado.classList.remove('hidden');
+                resMotivo.textContent = mensagem;
+            };
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const cpfLimpo = cpfInput.value.replace(/\D/g, '');
+
+                if (!validarCpf(cpfLimpo)) {
+                    exibirErro('CPF inválido. Verifique os dígitos informados.');
+                    return;
+                }
+
+                loadingSpinner.classList.remove('hidden');
+                btnSolicitar.disabled = true;
+                txtSolicitar.textContent = 'Enviando...';
+
+                const payload = {
+                    nome: document.getElementById('nome').value,
+                    cpf: cpfLimpo,
+                    renda_mensal: document.getElementById('renda_mensal').value,
+                    tipo_credito: document.getElementById('tipo_credito').value,
+                    valor_solicitado: document.getElementById('valor_solicitado').value,
+                };
+
+                try {
+                    const response = await fetch('/api/analise-credito', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Accept: 'application/json',
+                        },
+                        body: JSON.stringify(payload),
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        if (response.status === 422 && data.errors) {
+                            const mensagens = Object.values(data.errors).flat().join(' ');
+                            exibirErro(mensagens || 'Verifique os dados informados e tente novamente.');
+                        } else {
+                            exibirErro(data.message || 'Não foi possível processar a solicitação. Tente novamente.');
+                        }
+                        return;
+                    }
+
+                    exibirResultado(data);
+                } catch (erro) {
+                    exibirErro('Falha de conexão com o servidor. Tente novamente em instantes.');
+                } finally {
+                    loadingSpinner.classList.add('hidden');
+                    btnSolicitar.disabled = false;
+                    txtSolicitar.textContent = 'Solicitar Análise de Crédito';
+                }
+            });
         });
     </script>
 </body>
