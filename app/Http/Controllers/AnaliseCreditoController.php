@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\SolicitarAnaliseCreditoRequest;
+use App\Services\AnaliseCreditoService;
 
 class AnaliseCreditoController extends Controller
 {
@@ -18,21 +19,15 @@ class AnaliseCreditoController extends Controller
      *  - tipo_credito: string, obrigatório (pessoal | imobiliario | automotivo)
      *  - valor_solicitado: numeric, obrigatório
      *
-     * Fluxo esperado:
-     *  1. Validar os dados de entrada.
-     *  2. Persistir a análise no banco com status 'pendente'.
-     *  3. Consultar a API do Bureau de Crédito (GET /api/mock/bureau/{cpf}) via Http::.
-     *  4. Tratar falhas de comunicação com o Bureau (timeout, HTTP 500, resposta malformada).
-     *  5. Aplicar as regras de negócio (renda mínima, faixas de score, comprometimento de renda).
-     *  6. Atualizar e retornar a análise persistida com o resultado final.
-     *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Http\Requests\SolicitarAnaliseCreditoRequest  $request
+     * @param  \App\Services\AnaliseCreditoService  $service
      * @return \Illuminate\Http\JsonResponse
      */
-    public function solicitar(Request $request)
+    public function solicitar(SolicitarAnaliseCreditoRequest $request, AnaliseCreditoService $service)
     {
-        // TODO: Implementar validação, consulta ao Bureau e regras de análise.
-        return response()->json(['message' => 'Not implemented'], 501);
+        $analise = $service->solicitar($request->validated());
+
+        return response()->json($analise, 201);
     }
 
     /**
