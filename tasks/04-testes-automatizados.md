@@ -13,26 +13,26 @@ quebrar naturalmente, é esperado).
 
 Cenários a cobrir (do próprio README):
 
-- [ ] Aprovação com score alto (CPF terminado em `3` → score 850) → status `aprovado`,
+- [x] Aprovação com score alto (CPF terminado em `3` → score 850) → status `aprovado`,
   taxa `2.9`.
-- [ ] Aprovação com score médio (CPF terminado em `2` → score 550) → status `aprovado`,
+- [x] Aprovação com score médio (CPF terminado em `2` → score 550) → status `aprovado`,
   taxa `4.5`.
-- [ ] Reprovação por renda insuficiente (`renda_mensal < 1500`) — não precisa nem
+- [x] Reprovação por renda insuficiente (`renda_mensal < 1500`) — não precisa nem
   mockar score corretamente, a regra deve barrar antes.
-- [ ] Reprovação por score baixo (CPF terminado em `1` → score 150).
-- [ ] Reprovação por comprometimento de renda (valor solicitado alto o suficiente para
+- [x] Reprovação por score baixo (CPF terminado em `1` → score 150).
+- [x] Reprovação por comprometimento de renda (valor solicitado alto o suficiente para
   que a parcela some mais de 30% da renda, mesmo com score aprovador).
-- [ ] Falha da API do Bureau (`Http::fake(['*' => Http::response(['error' => '...'],
+- [x] Falha da API do Bureau (`Http::fake(['*' => Http::response(['error' => '...'],
   500)])`) → resposta limpa da aplicação (sem 500 "cru", sem exception não tratada).
-- [ ] Confirmação de contratação (`contratar`) com análise `aprovado` → muda para
+- [x] Confirmação de contratação (`contratar`) com análise `aprovado` → muda para
   `contratado` (ou `processando_contratacao` se implementar o diferencial de fila, ver
   [05](05-diferencial-filas.md)).
-- [ ] Criação automática do cliente ao solicitar análise com CPF novo — assert que
+- [x] Criação automática do cliente ao solicitar análise com CPF novo — assert que
   `Cliente::where('cpf', ...)->exists()` após a chamada.
-- [ ] (Extra recomendado) `contratar` em análise que não está `aprovado` → erro
+- [x] (Extra recomendado) `contratar` em análise que não está `aprovado` → erro
   claro (422/409), não deve mudar o status.
-- [ ] (Extra recomendado) `contratar` em análise inexistente → `404`.
-- [ ] (Extra recomendado) resposta malformada do Bureau (sem chave `score`) → mesma
+- [x] (Extra recomendado) `contratar` em análise inexistente → `404`.
+- [x] (Extra recomendado) resposta malformada do Bureau (sem chave `score`) → mesma
   resiliência do cenário de erro 500.
 
 Usar `Http::fake()` por CPF/URL, ex.:
@@ -44,16 +44,16 @@ Http::fake([
 
 ## 4.2 `tests/Feature/ClienteTest.php` (criar do zero)
 
-- [ ] Criação de cliente com dados válidos → `201`.
-- [ ] Falha de validação sem campos obrigatórios → `422`.
-- [ ] Falha com CPF duplicado → `422`.
-- [ ] Falha com e-mail duplicado → `422`.
-- [ ] Listagem paginada → `200` (assert estrutura de paginação, ex. chave `data`).
-- [ ] Exibição por ID existente → `200`.
-- [ ] `404` ao buscar ID inexistente.
-- [ ] Atualização parcial de cliente existente → `200`.
-- [ ] Remoção de cliente existente → `204` sem body.
-- [ ] `404` ao remover ID inexistente.
+- [x] Criação de cliente com dados válidos → `201`.
+- [x] Falha de validação sem campos obrigatórios → `422`.
+- [x] Falha com CPF duplicado → `422`.
+- [x] Falha com e-mail duplicado → `422`.
+- [x] Listagem paginada → `200` (assert estrutura de paginação, ex. chave `data`).
+- [x] Exibição por ID existente → `200`.
+- [x] `404` ao buscar ID inexistente.
+- [x] Atualização parcial de cliente existente → `200`.
+- [x] Remoção de cliente existente → `204` sem body.
+- [x] `404` ao remover ID inexistente.
 
 Usar `RefreshDatabase` (já usado em `AnaliseCreditoTest`) e, se útil, uma factory para
 `Cliente` (`database/factories/ClienteFactory.php` — não existe ainda, criar se for
