@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use App\Enums\StatusAnalise;
+use App\Jobs\ProcessarContratacaoJob;
 use App\Models\AnaliseCredito;
 use App\Models\Cliente;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class AnaliseCreditoTest extends TestCase
@@ -145,8 +147,10 @@ class AnaliseCreditoTest extends TestCase
         $this->assertTrue(Cliente::where('cpf', '12345678903')->exists());
     }
 
-    public function test_contratar_analise_aprovada_muda_status_para_contratado(): void
+    public function test_contratar_analise_aprovada_muda_status_para_processando_contratacao_e_despacha_job(): void
     {
+        Queue::fake();
+
         $cliente = Cliente::create([
             'nome' => 'Maria Souza',
             'cpf' => '98765432100',
@@ -170,7 +174,38 @@ class AnaliseCreditoTest extends TestCase
         $response = $this->postJson("/api/analise-credito/{$analise->id}/contratar");
 
         $response->assertStatus(200);
-        $response->assertJsonPath('status', StatusAnalise::CONTRATADO->value);
+        $response->assertJsonPath('status', StatusAnalise::PROCESSANDO_CONTRATACAO->value);
+
+        $this->assertSame(StatusAnalise::PROCESSANDO_CONTRATACAO, $analise->fresh()->status);
+
+        Queue::assertPushed(ProcessarContratacaoJob::class, function (ProcessarContratacaoJob $job) use ($analise) {
+            return $job->analiseId === $analise->id;
+        });
+    }
+
+    public function test_processar_contratacao_job_finaliza_contratacao(): void
+    {
+        $cliente = Cliente::create([
+            'nome' => 'Maria Souza',
+            'cpf' => '98765432100',
+            'email' => 'maria@example.com',
+            'renda_mensal' => 5000.00,
+        ]);
+
+        $analise = AnaliseCredito::create([
+            'cliente_id' => $cliente->id,
+            'cpf' => $cliente->cpf,
+            'nome' => $cliente->nome,
+            'renda_mensal' => $cliente->renda_mensal,
+            'tipo_credito' => 'pessoal',
+            'valor_solicitado' => 5000.00,
+            'status' => StatusAnalise::PROCESSANDO_CONTRATACAO,
+            'score' => 850,
+            'taxa_juros' => 2.9,
+            'valor_parcela' => 1123.33,
+        ]);
+
+        (new ProcessarContratacaoJob($analise->id))->handle();
 
         $this->assertSame(StatusAnalise::CONTRATADO, $analise->fresh()->status);
     }

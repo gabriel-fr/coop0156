@@ -2,10 +2,13 @@
 
 namespace App\Jobs;
 
+use App\Enums\StatusAnalise;
+use App\Models\AnaliseCredito;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 /**
  * ⭐ DIFERENCIAL OPCIONAL — ProcessarContratacaoJob
@@ -34,12 +37,15 @@ class ProcessarContratacaoJob implements ShouldQueue
 
     /**
      * Execute the job.
-     *
-     * TODO (Diferencial): Buscar a AnaliseCredito pelo $analiseId,
-     * atualizar o status para 'contratado' e registrar um log de sucesso.
      */
     public function handle(): void
     {
-        //
+        $analise = AnaliseCredito::findOrFail($this->analiseId);
+
+        $analise->update(['status' => StatusAnalise::CONTRATADO]);
+
+        Log::info('Contratação processada com sucesso.', [
+            'analise_id' => $analise->id,
+        ]);
     }
 }
